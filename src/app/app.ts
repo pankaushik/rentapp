@@ -3,7 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { LocalStorageService } from './services/local-storage.service';
-import { FirebaseService } from './services/firebase.service';
+import { GithubStorageService, RentAppData } from './services/github-storage.service';
 
 interface Apartment {
   name: string;
@@ -27,10 +27,12 @@ export class App implements OnInit, OnDestroy {
   private readonly UNIT_PRICE_KEY = 'rentapp_unit_price';
   private autoSaveInterval?: number;
 
-  isFirebaseConfigured = false;
-  isSignedIn = false;
+  isGithubConfigured = false;
   isSyncing = false;
   lastSyncTime?: Date;
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'error' = 'idle';
+  showTokenSetup = false;
+  githubToken = '';
 
   apartments: Apartment[] = [
     {
@@ -65,19 +67,24 @@ export class App implements OnInit, OnDestroy {
 
   constructor(
     private localStorageService: LocalStorageService,
-    private firebaseService: FirebaseService
+    private githubStorage: GithubStorageService
   ) {}
 
-  ngOnInit(): void {
-    this.isFirebaseConfigured = this.firebaseService.isConfigured();
+  async ngOnInit(): Promise<void> {
+    this.isGithubConfigured = this.githubStorage.hasToken();
 
-    if (this.isFirebaseConfigured) {
-      this.initializeFirebase();
+    if (this.isGithubConfigured) {
+      await this.initializeGithubStorage();
     } else {
       this.loadDataFromLocalStorage();
     }
 
     this.setupAutoSave();
+
+    this.githubStorage.syncStatus$.subscribe(status => {
+      this.syncStatus = status as 'idle' | 'syncing' | 'synced' | 'error';
+      this.isSyncing = status === 'syncing';
+    });
   }
 
   ngOnDestroy(): void {
@@ -86,37 +93,16 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
-  private async initializeFirebase(): Promise<void> {
-    this.firebaseService.user$.subscribe(user => {
-      this.isSignedIn = !!user;
-    });
-
-    this.firebaseService.data$.subscribe(data => {
-      if (data) {
-        this.apartments = data.apartments;
-        this.unitPrice = data.unitPrice;
-        this.lastSyncTime = data.lastUpdated;
-        this.isSyncing = false;
-      }
-    });
-
-    const user = this.firebaseService.getCurrentUser();
-    if (!user) {
-      await this.firebaseService.signInAnonymously();
-    }
-
-    const currentUser = this.firebaseService.getCurrentUser();
-    if (currentUser) {
-      const cloudData = await this.firebaseService.loadData(currentUser.uid);
-      if (cloudData) {
-        this.apartments = cloudData.apartments;
-        this.unitPrice = cloudData.unitPrice;
-        this.lastSyncTime = cloudData.lastUpdated;
-      } else {
-        const localData = this.loadDataFromLocalStorage();
-        if (localData) {
-          await this.saveData();
-        }
+  async initializeGithubStorage(): Promise<void> {
+    const cloudData = await this.githubStorage.loadData();
+    if (cloudData) {
+      this.apartments = cloudData.apartments;
+      this.unitPrice = cloudData.unitPrice;
+      this.lastSyncTime = new Date(cloudData.lastUpdated);
+    } else {
+      const hasLocalData = this.loadDataFromLocalStorage();
+      if (hasLocalData) {
+        await this.saveData();
       }
     }
   }
@@ -143,22 +129,16 @@ export class App implements OnInit, OnDestroy {
     this.localStorageService.setItem(this.STORAGE_KEY, this.apartments);
     this.localStorageService.setItem(this.UNIT_PRICE_KEY, this.unitPrice);
 
-    if (this.isFirebaseConfigured && this.isSignedIn) {
-      const user = this.firebaseService.getCurrentUser();
-      if (user) {
-        try {
-          this.isSyncing = true;
-          await this.firebaseService.saveData(user.uid, {
-            apartments: this.apartments,
-            unitPrice: this.unitPrice,
-            lastUpdated: new Date()
-          });
-          this.lastSyncTime = new Date();
-          this.isSyncing = false;
-        } catch (error) {
-          console.error('Failed to sync to cloud:', error);
-          this.isSyncing = false;
-        }
+    if (this.isGithubConfigured) {
+      const data: RentAppData = {
+        apartments: this.apartments,
+        unitPrice: this.unitPrice,
+        lastUpdated: new Date().toISOString()
+      };
+
+      const success = await this.githubStorage.saveData(data);
+      if (success) {
+        this.lastSyncTime = new Date();
       }
     }
   }
@@ -166,7 +146,7 @@ export class App implements OnInit, OnDestroy {
   private setupAutoSave(): void {
     this.autoSaveInterval = window.setInterval(() => {
       this.saveData();
-    }, 5000);
+    }, 30000); // Save every 30 seconds to avoid GitHub rate limits
   }
 
   async resetData(): Promise<void> {
@@ -189,6 +169,40 @@ export class App implements OnInit, OnDestroy {
       previousReading: apt.currentReading
     }));
     await this.saveData();
+  }
+
+  async setupGithubToken(): Promise<void> {
+    if (!this.githubToken.trim()) {
+      alert('Please enter a GitHub token');
+      return;
+    }
+
+    this.githubStorage.setToken(this.githubToken.trim());
+
+    const isValid = await this.githubStorage.checkConnection();
+    if (isValid) {
+      this.isGithubConfigured = true;
+      this.showTokenSetup = false;
+      await this.initializeGithubStorage();
+      alert('GitHub storage connected successfully!');
+    } else {
+      this.githubStorage.clearToken();
+      alert('Invalid GitHub token or repository access denied. Please check your token.');
+    }
+
+    this.githubToken = '';
+  }
+
+  toggleTokenSetup(): void {
+    this.showTokenSetup = !this.showTokenSetup;
+  }
+
+  disconnectGithub(): void {
+    if (confirm('Disconnect from GitHub? Data will only be saved locally.')) {
+      this.githubStorage.clearToken();
+      this.isGithubConfigured = false;
+      this.showTokenSetup = false;
+    }
   }
 
   calculateElectricityBill(apartment: Apartment): number {

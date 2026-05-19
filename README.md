@@ -1,15 +1,77 @@
 # Rent Calculation App
 
-A modern Angular application for calculating apartment rents with electricity consumption tracking. Supports both local storage and **cross-device cloud synchronization** via Firebase.
+A modern Angular application for calculating apartment rents with electricity consumption tracking. Supports both local storage and **cross-device cloud synchronization** using GitHub as a database!
 
 ## Features
 
 - 📊 Calculate rent for multiple apartments
 - ⚡ Track electricity consumption with customizable unit prices
 - 💾 Auto-save to local browser storage
-- ☁️ **Optional**: Cloud sync across all your devices using Firebase
+- ☁️ **GitHub as Database**: Sync across all devices using your GitHub repo
 - 📱 Responsive design - works on desktop, tablet, and mobile
-- 🔄 Real-time synchronization when using cloud storage
+- 🔄 Real-time synchronization across devices
+- 🆓 **Completely free** - no external services needed!
+
+## Why GitHub as Database?
+
+- ✅ **Zero setup** - Just need a GitHub Personal Access Token
+- ✅ **Free forever** - No quotas or limits
+- ✅ **Your data, your repo** - Complete control
+- ✅ **Version history** - Track all changes
+- ✅ **Direct access** - View/edit data on GitHub
+- ✅ **Simple** - Just a JSON file
+- ✅ **Already using GitHub** - No new service to learn
+
+## Quick Start
+
+### 1. Use the App (Works Immediately!)
+
+Visit: **https://pankaushik.github.io/rentapp/**
+
+The app works right away with local storage. Enter your data and it's saved in your browser.
+
+### 2. Enable Cross-Device Sync (Optional - 2 minutes)
+
+To access your data on multiple devices:
+
+1. **Create a GitHub Personal Access Token**
+   - Go to: https://github.com/settings/tokens/new
+   - Description: `RentApp`
+   - Scope: Check `repo`
+   - Generate token and copy it
+
+2. **Connect in the App**
+   - Click "🔗 Connect to GitHub for Cross-Device Sync"
+   - Paste your token
+   - Click "Connect"
+
+3. **Done!** Your data now syncs across all devices
+
+**Full setup guide:** See [GITHUB_STORAGE_SETUP.md](GITHUB_STORAGE_SETUP.md)
+
+## How to Use
+
+### Basic Operations
+
+1. **Enter Readings**: Input previous and current meter readings for each apartment
+2. **Set Unit Price**: Adjust the electricity unit price (₹/unit) - default is ₹8
+3. **View Calculations**: See real-time rent calculations
+4. **Save Data**: Click "💾 Save Data" or wait for auto-save (every 30 seconds)
+5. **Move to Previous**: Click "↻ Move to Previous" when starting a new billing cycle
+6. **Reset**: Clear all data with "🗑️ Reset All"
+
+### Cross-Device Sync
+
+**With GitHub connected:**
+- ✓ Enter data on laptop → See it on mobile
+- ✓ Update on phone → Syncs to tablet
+- ✓ Changes sync every 30 seconds
+- ✓ Works offline, syncs when back online
+
+**Without GitHub:**
+- Data saves locally in browser only
+- Each device has separate data
+- Works perfectly fine for single-device use
 
 ## Apartment Types
 
@@ -18,21 +80,7 @@ A modern Angular application for calculating apartment rents with electricity co
 3. **Second Floor Back** - Fixed Rent: ₹24,000 + ₹500 motor charges
 4. **Parking Floor** - Fixed Rent: ₹23,000 + ₹500 motor charges
 
-## How to Use
-
-### Basic Operations
-
-1. **Enter Readings**: Input previous and current meter readings for each apartment
-2. **Set Unit Price**: Adjust the electricity unit price (₹/unit) - default is ₹8
-3. **View Calculations**: See real-time rent calculations including:
-   - Units consumed
-   - Electricity bill
-   - Total rent (Fixed Rent + Motor Charges + Electricity Bill)
-4. **Save Data**: Click "💾 Save Data" or wait for auto-save (every 5 seconds)
-5. **Move to Previous**: Click "↻ Move to Previous" when starting a new billing cycle
-6. **Reset**: Clear all data with the "🗑️ Reset All" button
-
-### Local Development
+## Local Development
 
 ```bash
 npm install
@@ -41,109 +89,67 @@ npm start
 
 Navigate to `http://localhost:4200/`
 
-### Build for Production
+## Build for Production
 
 ```bash
 npm run build:prod
 ```
 
-## Firebase Setup (Optional - for Cross-Device Sync)
+## Where is Data Stored?
 
-To sync data across multiple devices, you'll need to set up Firebase:
+### Local Storage (Always)
+- Browser's localStorage
+- Survives page refresh
+- Device-specific
 
-### Step 1: Create a Firebase Project
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Click "Add project" or select an existing project
-3. Follow the setup wizard
-
-### Step 2: Enable Firestore Database
-
-1. In your Firebase project, go to **Build > Firestore Database**
-2. Click "Create database"
-3. Choose "Start in test mode" for development
-4. Select your preferred location
-
-### Step 3: Set up Firestore Security Rules
-
-Go to the **Rules** tab in Firestore and use:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /rentAppData/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
-
-### Step 4: Enable Anonymous Authentication
-
-1. Go to **Build > Authentication**
-2. Click "Get started"
-3. Click on the "Sign-in method" tab
-4. Enable "Anonymous" authentication
-
-### Step 5: Get Your Firebase Config
-
-1. In Firebase Console, go to **Project settings** (gear icon)
-2. Scroll down to "Your apps"
-3. Click the web icon `</>`
-4. Register your app
-5. Copy the Firebase configuration
-
-### Step 6: Update Environment Files
-
-Replace placeholder values in `src/environments/environment.ts` and `src/environments/environment.prod.ts`:
-
-```typescript
-export const environment = {
-  production: false, // true for prod
-  firebase: {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  }
-};
-```
-
-⚠️ **Important**: Don't commit your Firebase credentials to Git!
-
-## Cloud Sync Features
-
-When Firebase is configured:
-- ✓ Data automatically syncs to the cloud
-- ✓ Access your data from any device
-- ✓ See sync status indicator (Synced/Syncing/Offline)
-- ✓ Real-time updates across all devices
-- ✓ Automatic fallback to local storage if offline
-
-### Without Firebase
-
-The app works perfectly fine without Firebase:
-- Data is saved locally in your browser
-- Works offline
-- Data persists between sessions on the same device
-- Shows "💾 Using local storage only" status
+### GitHub Storage (When Connected)
+- File: `data/rentapp-data.json` in your GitHub repo
+- View it at: https://github.com/pankaushik/rentapp/blob/main/data/rentapp-data.json
+- Accessible from all devices with your token
 
 ## Technology Stack
 
 - **Angular 21** - Frontend framework
-- **Firebase** - Cloud database and authentication (optional)
+- **GitHub API** - Cloud storage and sync
 - **TypeScript** - Programming language
 - **LocalStorage** - Browser storage fallback
 - **GitHub Actions** - CI/CD for automatic deployment
+
+## Security
+
+### GitHub Token
+- Stored securely in browser localStorage
+- Not committed to code
+- Required for GitHub sync
+- Can be revoked anytime: https://github.com/settings/tokens
+
+### Data Privacy
+- Your data stored in YOUR GitHub repository
+- Only accessible with your token
+- Full control over who has access
 
 ## Deployment
 
 The app is automatically deployed to GitHub Pages when you push to the main branch.
 
 Live URL: https://pankaushik.github.io/rentapp/
+
+## FAQ
+
+**Q: Do I need GitHub to use this app?**
+A: No! It works locally without any setup. GitHub is only needed for cross-device sync.
+
+**Q: Is my data safe?**
+A: Yes! Your data is in your GitHub repository, accessible only with your token.
+
+**Q: What if I lose my GitHub token?**
+A: Generate a new one and reconnect. Your data is safe in GitHub.
+
+**Q: Does this cost money?**
+A: No! Completely free. GitHub provides generous API limits.
+
+**Q: Can I share my data with family?**
+A: Share your GitHub token with them, but they'll have full access to your repository.
 
 ## License
 

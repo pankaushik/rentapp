@@ -2,19 +2,46 @@
   <header>
     <h1>{{ title }}</h1>
 
-    @if (isFirebaseConfigured) {
+    @if (isGithubConfigured) {
       <div class="sync-status">
-        @if (isSyncing) {
-          <span class="status syncing">🔄 Syncing...</span>
-        } @else if (isSignedIn && lastSyncTime) {
-          <span class="status synced">✓ Synced {{ lastSyncTime | date:'short' }}</span>
-        } @else if (!isSignedIn) {
-          <span class="status offline">⚠️ Cloud sync unavailable</span>
+        @if (syncStatus === 'syncing') {
+          <span class="status syncing">🔄 Syncing to GitHub...</span>
+        } @else if (syncStatus === 'synced' && lastSyncTime) {
+          <span class="status synced">✓ Synced to GitHub {{ lastSyncTime | date:'short' }}</span>
+        } @else if (syncStatus === 'error') {
+          <span class="status offline">⚠️ Sync error - check connection</span>
         }
       </div>
     } @else {
       <div class="sync-status">
         <span class="status local">💾 Using local storage only</span>
+        <button class="btn btn-link" (click)="toggleTokenSetup()">
+          {{ showTokenSetup ? 'Cancel' : '🔗 Connect to GitHub for Cross-Device Sync' }}
+        </button>
+      </div>
+    }
+
+    @if (showTokenSetup) {
+      <div class="token-setup">
+        <h3>Connect to GitHub</h3>
+        <p class="help-text">
+          To sync data across devices, you need a GitHub Personal Access Token.
+          <a href="https://github.com/settings/tokens/new?description=RentApp&scopes=repo" target="_blank">
+            Create one here →
+          </a>
+        </p>
+        <div class="token-input-group">
+          <input 
+            type="password" 
+            [(ngModel)]="githubToken" 
+            placeholder="Paste your GitHub token here (ghp_...)"
+            class="token-input"
+          />
+          <button class="btn btn-primary" (click)="setupGithubToken()">Connect</button>
+        </div>
+        <p class="help-text small">
+          Required scope: <code>repo</code> (Full control of private repositories)
+        </p>
       </div>
     }
 
@@ -34,6 +61,9 @@
         <button class="btn btn-primary" (click)="saveData()">💾 Save Data</button>
         <button class="btn btn-secondary" (click)="moveCurrentToPrevious()">↻ Move to Previous</button>
         <button class="btn btn-danger" (click)="resetData()">🗑️ Reset All</button>
+        @if (isGithubConfigured) {
+          <button class="btn btn-warning" (click)="disconnectGithub()">🔌 Disconnect GitHub</button>
+        }
       </div>
     </div>
   </header>
