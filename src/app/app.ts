@@ -26,6 +26,7 @@ export class App implements OnInit, OnDestroy {
   private readonly STORAGE_KEY = 'rentapp_apartments';
   private readonly UNIT_PRICE_KEY = 'rentapp_unit_price';
   private autoSaveInterval?: number;
+  private dataHash = '';
 
   isGithubConfigured = false;
   isSyncing = false;
@@ -99,11 +100,10 @@ export class App implements OnInit, OnDestroy {
       this.apartments = cloudData.apartments;
       this.unitPrice = cloudData.unitPrice;
       this.lastSyncTime = new Date(cloudData.lastUpdated);
+      this.updateDataHash();
     } else {
-      const hasLocalData = this.loadDataFromLocalStorage();
-      if (hasLocalData) {
-        await this.saveData();
-      }
+      this.loadDataFromLocalStorage();
+      this.updateDataHash();
     }
   }
 
@@ -125,6 +125,23 @@ export class App implements OnInit, OnDestroy {
     return hasData;
   }
 
+  private updateDataHash(): void {
+    const data = {
+      apartments: this.apartments,
+      unitPrice: this.unitPrice
+    };
+    this.dataHash = JSON.stringify(data);
+  }
+
+  private hasDataChanged(): boolean {
+    const currentData = {
+      apartments: this.apartments,
+      unitPrice: this.unitPrice
+    };
+    const currentHash = JSON.stringify(currentData);
+    return this.dataHash !== currentHash;
+  }
+
   async saveData(): Promise<void> {
     this.localStorageService.setItem(this.STORAGE_KEY, this.apartments);
     this.localStorageService.setItem(this.UNIT_PRICE_KEY, this.unitPrice);
@@ -139,14 +156,19 @@ export class App implements OnInit, OnDestroy {
       const success = await this.githubStorage.saveData(data);
       if (success) {
         this.lastSyncTime = new Date();
+        this.updateDataHash();
       }
+    } else {
+      this.updateDataHash();
     }
   }
 
   private setupAutoSave(): void {
-    this.autoSaveInterval = window.setInterval(() => {
-      this.saveData();
-    }, 30000); // Save every 30 seconds to avoid GitHub rate limits
+    this.autoSaveInterval = window.setInterval(async () => {
+      if (this.hasDataChanged()) {
+        await this.saveData();
+      }
+    }, 30000); // Save every 30 seconds if data changed
   }
 
   async resetData(): Promise<void> {
@@ -184,6 +206,13 @@ export class App implements OnInit, OnDestroy {
       this.isGithubConfigured = true;
       this.showTokenSetup = false;
       await this.initializeGithubStorage();
+
+      // Upload local data to GitHub if cloud is empty
+      const cloudData = await this.githubStorage.loadData();
+      if (!cloudData) {
+        await this.saveData();
+      }
+
       alert('GitHub storage connected successfully!');
     } else {
       this.githubStorage.clearToken();
