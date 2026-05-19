@@ -126,19 +126,23 @@ export class App implements OnInit, OnDestroy {
   }
 
   private updateDataHash(): void {
-    const data = {
-      apartments: this.apartments,
-      unitPrice: this.unitPrice
-    };
-    this.dataHash = JSON.stringify(data);
+    // Only track meter readings for change detection
+    const meterReadings = this.apartments.map(apt => ({
+      name: apt.name,
+      previousReading: apt.previousReading,
+      currentReading: apt.currentReading
+    }));
+    this.dataHash = JSON.stringify(meterReadings);
   }
 
   private hasDataChanged(): boolean {
-    const currentData = {
-      apartments: this.apartments,
-      unitPrice: this.unitPrice
-    };
-    const currentHash = JSON.stringify(currentData);
+    // Only check if meter readings changed
+    const currentMeterReadings = this.apartments.map(apt => ({
+      name: apt.name,
+      previousReading: apt.previousReading,
+      currentReading: apt.currentReading
+    }));
+    const currentHash = JSON.stringify(currentMeterReadings);
     return this.dataHash !== currentHash;
   }
 
