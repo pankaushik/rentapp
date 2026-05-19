@@ -1,18 +1,37 @@
 <div class="container">
   <header>
     <h1>{{ title }}</h1>
+    <div class="header-controls">
+      <div class="form-group inline">
+        <label>Unit Price (₹):</label>
+        <input 
+          type="number" 
+          [(ngModel)]="unitPrice" 
+          (change)="saveData()"
+          min="0"
+          step="0.1"
+          placeholder="Price per unit"
+        />
+      </div>
+      <div class="button-group">
+        <button class="btn btn-primary" (click)="saveData()">💾 Save Data</button>
+        <button class="btn btn-secondary" (click)="moveCurrentToPrevious()">↻ Move to Previous</button>
+        <button class="btn btn-danger" (click)="resetData()">🗑️ Reset All</button>
+      </div>
+    </div>
   </header>
 
   <div class="apartments-grid">
     @for (apartment of apartments; track apartment.name) {
       <div class="apartment-card">
         <h2>{{ apartment.name }}</h2>
-        
+
         <div class="form-group">
           <label>Previous Reading:</label>
           <input 
             type="number" 
             [(ngModel)]="apartment.previousReading" 
+            (change)="saveData()"
             min="0"
             placeholder="Enter previous reading"
           />
@@ -23,6 +42,7 @@
           <input 
             type="number" 
             [(ngModel)]="apartment.currentReading" 
+            (change)="saveData()"
             min="0"
             placeholder="Enter current reading"
           />
@@ -31,13 +51,13 @@
         <div class="calculation-details">
           <div class="detail-row">
             <span>Fixed Rent:</span>
-            <span class="amount">{{ apartment.fixedRent }}</span>
+            <span class="amount">₹{{ apartment.fixedRent }}</span>
           </div>
 
           @if (apartment.motorCharges > 0) {
             <div class="detail-row">
               <span>Motor Charges:</span>
-              <span class="amount">{{ apartment.motorCharges }}</span>
+              <span class="amount">₹{{ apartment.motorCharges }}</span>
             </div>
           }
 
@@ -47,13 +67,13 @@
           </div>
 
           <div class="detail-row">
-            <span>Electricity Bill (@ {{ unitPrice }}/unit):</span>
-            <span class="amount">{{ calculateElectricityBill(apartment) }}</span>
+            <span>Electricity Bill (@ ₹{{ unitPrice }}/unit):</span>
+            <span class="amount">₹{{ calculateElectricityBill(apartment) }}</span>
           </div>
 
           <div class="detail-row total">
             <span>Total Rent:</span>
-            <span class="amount">{{ calculateTotalRent(apartment) }}</span>
+            <span class="amount">₹{{ calculateTotalRent(apartment) }}</span>
           </div>
         </div>
       </div>
