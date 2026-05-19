@@ -1,0 +1,64 @@
+<div class="container">
+  <header>
+    <h1>{{ title }}</h1>
+  </header>
+
+  <div class="apartments-grid">
+    @for (apartment of apartments; track apartment.name) {
+      <div class="apartment-card">
+        <h2>{{ apartment.name }}</h2>
+        
+        <div class="form-group">
+          <label>Previous Reading:</label>
+          <input 
+            type="number" 
+            [(ngModel)]="apartment.previousReading" 
+            min="0"
+            placeholder="Enter previous reading"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Current Reading:</label>
+          <input 
+            type="number" 
+            [(ngModel)]="apartment.currentReading" 
+            min="0"
+            placeholder="Enter current reading"
+          />
+        </div>
+
+        <div class="calculation-details">
+          <div class="detail-row">
+            <span>Fixed Rent:</span>
+            <span class="amount">{{ apartment.fixedRent }}</span>
+          </div>
+
+          @if (apartment.motorCharges > 0) {
+            <div class="detail-row">
+              <span>Motor Charges:</span>
+              <span class="amount">{{ apartment.motorCharges }}</span>
+            </div>
+          }
+
+          <div class="detail-row">
+            <span>Units Consumed:</span>
+            <span class="amount">{{ apartment.currentReading - apartment.previousReading }}</span>
+          </div>
+
+          <div class="detail-row">
+            <span>Electricity Bill (@ {{ unitPrice }}/unit):</span>
+            <span class="amount">{{ calculateElectricityBill(apartment) }}</span>
+          </div>
+
+          <div class="detail-row total">
+            <span>Total Rent:</span>
+            <span class="amount">{{ calculateTotalRent(apartment) }}</span>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<router-outlet />
