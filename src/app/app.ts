@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { LocalStorageService } from './services/local-storage.service';
+import { FirebaseService } from './services/firebase.service';
 
 interface Apartment {
   name: string;
@@ -25,6 +26,11 @@ export class App implements OnInit, OnDestroy {
   private readonly STORAGE_KEY = 'rentapp_apartments';
   private readonly UNIT_PRICE_KEY = 'rentapp_unit_price';
   private autoSaveInterval?: number;
+
+  isFirebaseConfigured = false;
+  isSignedIn = false;
+  isSyncing = false;
+  lastSyncTime?: Date;
 
   apartments: Apartment[] = [
     {
@@ -57,10 +63,20 @@ export class App implements OnInit, OnDestroy {
     }
   ];
 
-  constructor(private localStorageService: LocalStorageService) {}
+  constructor(
+    private localStorageService: LocalStorageService,
+    private firebaseService: FirebaseService
+  ) {}
 
   ngOnInit(): void {
-    this.loadData();
+    this.isFirebaseConfigured = this.firebaseService.isConfigured();
+
+    if (this.isFirebaseConfigured) {
+      this.initializeFirebase();
+    } else {
+      this.loadDataFromLocalStorage();
+    }
+
     this.setupAutoSave();
   }
 
@@ -70,22 +86,81 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
-  private loadData(): void {
+  private async initializeFirebase(): Promise<void> {
+    this.firebaseService.user$.subscribe(user => {
+      this.isSignedIn = !!user;
+    });
+
+    this.firebaseService.data$.subscribe(data => {
+      if (data) {
+        this.apartments = data.apartments;
+        this.unitPrice = data.unitPrice;
+        this.lastSyncTime = data.lastUpdated;
+        this.isSyncing = false;
+      }
+    });
+
+    const user = this.firebaseService.getCurrentUser();
+    if (!user) {
+      await this.firebaseService.signInAnonymously();
+    }
+
+    const currentUser = this.firebaseService.getCurrentUser();
+    if (currentUser) {
+      const cloudData = await this.firebaseService.loadData(currentUser.uid);
+      if (cloudData) {
+        this.apartments = cloudData.apartments;
+        this.unitPrice = cloudData.unitPrice;
+        this.lastSyncTime = cloudData.lastUpdated;
+      } else {
+        const localData = this.loadDataFromLocalStorage();
+        if (localData) {
+          await this.saveData();
+        }
+      }
+    }
+  }
+
+  private loadDataFromLocalStorage(): boolean {
     const savedApartments = this.localStorageService.getItem<Apartment[]>(this.STORAGE_KEY);
     const savedUnitPrice = this.localStorageService.getItem<number>(this.UNIT_PRICE_KEY);
 
+    let hasData = false;
     if (savedApartments && savedApartments.length > 0) {
       this.apartments = savedApartments;
+      hasData = true;
     }
 
     if (savedUnitPrice !== null) {
       this.unitPrice = savedUnitPrice;
+      hasData = true;
     }
+
+    return hasData;
   }
 
-  saveData(): void {
+  async saveData(): Promise<void> {
     this.localStorageService.setItem(this.STORAGE_KEY, this.apartments);
     this.localStorageService.setItem(this.UNIT_PRICE_KEY, this.unitPrice);
+
+    if (this.isFirebaseConfigured && this.isSignedIn) {
+      const user = this.firebaseService.getCurrentUser();
+      if (user) {
+        try {
+          this.isSyncing = true;
+          await this.firebaseService.saveData(user.uid, {
+            apartments: this.apartments,
+            unitPrice: this.unitPrice,
+            lastUpdated: new Date()
+          });
+          this.lastSyncTime = new Date();
+          this.isSyncing = false;
+        } catch (error) {
+          console.error('Failed to sync to cloud:', error);
+          this.isSyncing = false;
+        }
+      }
+    }
   }
 
   private setupAutoSave(): void {
@@ -94,7 +169,7 @@ export class App implements OnInit, OnDestroy {
     }, 5000);
   }
 
-  resetData(): void {
+  async resetData(): Promise<void> {
     if (confirm('Are you sure you want to reset all data? This will clear all saved readings.')) {
       this.localStorageService.removeItem(this.STORAGE_KEY);
       this.localStorageService.removeItem(this.UNIT_PRICE_KEY);
@@ -104,15 +179,16 @@ export class App implements OnInit, OnDestroy {
         currentReading: 0
       }));
       this.unitPrice = 8;
+      await this.saveData();
     }
   }
 
-  moveCurrentToPrevious(): void {
+  async moveCurrentToPrevious(): Promise<void> {
     this.apartments = this.apartments.map(apt => ({
       ...apt,
       previousReading: apt.currentReading
     }));
-    this.saveData();
+    await this.saveData();
   }
 
   calculateElectricityBill(apartment: Apartment): number {

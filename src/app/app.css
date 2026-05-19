@@ -20,6 +20,49 @@ header h1 {
   font-size: 2.5rem;
 }
 
+.sync-status {
+  margin: 10px 0;
+  text-align: center;
+}
+
+.status {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status.synced {
+  background: rgba(76, 175, 80, 0.2);
+  color: #2e7d32;
+}
+
+.status.syncing {
+  background: rgba(33, 150, 243, 0.2);
+  color: #1565c0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status.offline {
+  background: rgba(255, 152, 0, 0.2);
+  color: #e65100;
+}
+
+.status.local {
+  background: rgba(158, 158, 158, 0.2);
+  color: #424242;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 .header-controls {
   display: flex;
   flex-direction: column;

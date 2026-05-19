@@ -47,6 +47,11 @@ testem.log
 /typings
 __screenshots__/
 
+# Environment files with secrets (keep templates in git)
+# Uncomment these lines after adding your Firebase config
+# src/environments/environment.ts
+# src/environments/environment.prod.ts
+
 # System files
 .DS_Store
 Thumbs.db
